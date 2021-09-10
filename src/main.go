@@ -1,33 +1,43 @@
+// Code snippets take from this tutorial: https://towardsdatascience.com/golang-for-machine-learning-bd4bb84594ee
+
 package main
 
 import (
 	"fmt"
-	"log"
-	"os"
+	// "log"
+	// "os"
 
-	"github.com/go-gota/gota/dataframe"
-	// "github.com/sjwhitworth/golearn/base"
-	// "github.com/sjwhitworth/golearn/evaluation"
-	// "github.com/sjwhitworth/golearn/knn"
+	// "github.com/go-gota/gota/dataframe"
+	"github.com/sjwhitworth/golearn/base"
+	"github.com/sjwhitworth/golearn/evaluation"
+	"github.com/sjwhitworth/golearn/knn"
 )
 
 func main() {
-	irisCsv, err := os.Open("../data/iris_headers.csv")
+	fmt.Println("Load our csv data")
+	rawData, err := base.ParseCSVToInstances("../data/iris_headers.csv", true)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	df := dataframe.ReadCSV(irisCsv)
-	head := df.Subset([]int{0, 3})
-	fmt.Println(head)
+	fmt.Println("Initialize our KNN classifier")
+	cls := knn.NewKnnClassifier("euclidean", "linear", 2)
 
-	versicolorOnly := df.Filter(dataframe.F{
-		Colname:    " Species",
-		Comparator: "==",
-		Comparando: "Iris-versicolor",
-	})
-	fmt.Println(versicolorOnly)
-	attrFiltered := df.Select([]string{"Petal length", "Sepal length"})
-	fmt.Println(attrFiltered)
+	fmt.Println("Perform a training-test split")
+	trainData, testData := base.InstancesTrainTestSplit(rawData, 0.50)
+	cls.Fit(trainData)
 
+	fmt.Println("Calculate the euclidian distance and return the most popular label")
+	predictions, err := cls.Predict(testData)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(predictions)
+
+	fmt.Println("Print our summary metrics")
+	confusionMat, err := evaluation.GetConfusionMatrix(testData, predictions)
+	if err != nil {
+		panic(fmt.Sprintf("Unable to get confusion matrix: %s", err.Error()))
+	}
+	fmt.Println(evaluation.GetSummary(confusionMat))
 }
